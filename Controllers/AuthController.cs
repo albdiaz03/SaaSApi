@@ -1,7 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 using SaaS.Api.Data;
 using SaaS.Api.DTOs;
 using SaaS.Api.Models;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace SaaS.Api.Controllers
 {
@@ -10,26 +14,25 @@ namespace SaaS.Api.Controllers
     public class AuthController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(ApplicationDbContext context)
+        public AuthController(ApplicationDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterRequestDto request)
         {
-            // Verificar si el email ya existe
             if (_context.Users.Any(u => u.Email == request.Email))
                 return BadRequest("Email already exists.");
 
-            // Crear empresa
             var company = new Company
             {
                 Name = request.CompanyName
             };
 
-            // Crear usuario admin
             var user = new User
             {
                 Name = request.UserName,
@@ -45,6 +48,44 @@ namespace SaaS.Api.Controllers
             await _context.SaveChangesAsync();
 
             return Ok("Company and admin user created successfully.");
+        }
+
+        // ================= LOGIN =================
+
+        [HttpPost("login")]
+        public IActionResult Login(LoginDto model)
+        {
+            var user = _context.Users.FirstOrDefault(u => u.Email == model.Email);
+
+            if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
+                return Unauthorized("Invalid credentials");
+
+            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Role, user.Role),
+                    new Claim("CompanyId", user.CompanyId.ToString())
+                }),
+                Expires = DateTime.UtcNow.AddHours(2),
+                Issuer = _configuration["Jwt:Issuer"],
+                Audience = _configuration["Jwt:Audience"],
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+
+            return Ok(new
+            {
+                token = tokenHandler.WriteToken(token)
+            });
         }
     }
 }

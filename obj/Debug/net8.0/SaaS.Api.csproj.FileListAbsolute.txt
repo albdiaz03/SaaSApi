@@ -138,3 +138,5 @@ E:\Proyectos\SaaS.Api\SaaS.Api\obj\Debug\net8.0\SaaS.Api.pdb
 E:\Proyectos\SaaS.Api\SaaS.Api\obj\Debug\net8.0\SaaS.Api.genruntimeconfig.cache
 E:\Proyectos\SaaS.Api\SaaS.Api\obj\Debug\net8.0\ref\SaaS.Api.dll
 E:\Proyectos\SaaS.Api\SaaS.Api\bin\Debug\net8.0\BCrypt.Net-Next.dll
+E:\Proyectos\SaaS.Api\SaaS.Api\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+E:\Proyectos\SaaS.Api\SaaS.Api\obj\Debug\net8.0\SaaS.Api.sourcelink.json
