@@ -1,9 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using SaaS.Api.Common;
 
 namespace SaaS.Api.Models
 {
-    public class User
+    public class User : ITenantEntity
     {
         public Guid Id { get; set; } = Guid.NewGuid();
 

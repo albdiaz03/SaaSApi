@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SaaS.Api.Data;
 using SaaS.Api.DTOs;
@@ -28,10 +29,12 @@ namespace SaaS.Api.Controllers
             if (_context.Users.Any(u => u.Email == request.Email))
                 return BadRequest("Email already exists.");
 
-            var company = new Company
-            {
-                Name = request.CompanyName
-            };
+            // Verificar que la empresa exista
+            var companyExists = _context.Companies
+                .Any(c => c.Id == request.CompanyId);
+
+            if (!companyExists)
+                return BadRequest("Company does not exist.");
 
             var user = new User
             {
@@ -39,15 +42,13 @@ namespace SaaS.Api.Controllers
                 Email = request.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
                 Role = "Admin",
-                Company = company
+                CompanyId = request.CompanyId   // 👈 ahora lo asignamos directo
             };
 
-            _context.Companies.Add(company);
             _context.Users.Add(user);
-
             await _context.SaveChangesAsync();
 
-            return Ok("Company and admin user created successfully.");
+            return Ok("User created successfully.");
         }
 
         // ================= LOGIN =================
@@ -55,12 +56,16 @@ namespace SaaS.Api.Controllers
         [HttpPost("login")]
         public IActionResult Login(LoginDto model)
         {
-            var user = _context.Users.FirstOrDefault(u => u.Email == model.Email);
+            var user = _context.Users
+    .IgnoreQueryFilters()
+    .FirstOrDefault(u => u.Email == model.Email);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
                 return Unauthorized("Invalid credentials");
 
             var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
+
+
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -84,7 +89,14 @@ namespace SaaS.Api.Controllers
 
             return Ok(new
             {
-                token = tokenHandler.WriteToken(token)
+                token = tokenHandler.WriteToken(token),
+                user = new
+                {
+                    id = user.Id,
+                    email = user.Email,
+                    role = user.Role,
+                    companyId = user.CompanyId
+                }
             });
         }
     }

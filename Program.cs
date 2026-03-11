@@ -2,12 +2,15 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SaaS.Api.Data;
+using SaaS.Api.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 🔹 Add services to the container.
 builder.Services.AddControllers();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -42,6 +45,19 @@ builder.Services.AddSwaggerGen(options =>
 // 🔹 DbContext (esto ya lo tienes)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
+// Añadir CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowReactApp",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:5173")
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
+});
 
 
 // ================= JWT CONFIG VA AQUÍ (no olvidar) =================
@@ -81,10 +97,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseAuthentication();   // 👈 IMPORTANTE
 app.UseAuthorization();
+// Usar CORS
+app.UseCors("AllowReactApp");
 
 app.MapControllers();
 
